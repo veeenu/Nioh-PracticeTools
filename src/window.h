@@ -22,6 +22,7 @@ using namespace nlohmann;
 
 namespace NiohPracticeTools {
   class Window : public QWidget {
+    Q_OBJECT
     public:
       explicit Window(QWidget* parent = nullptr);
       void keyup(DWORD vk_code);
@@ -40,5 +41,7 @@ namespace NiohPracticeTools {
       bool lock;
       std::thread position_updater;
       std::unordered_map<std::string, Position> positions;
+    signals:
+      void show_position(float x, float y, float z);
   };
 };

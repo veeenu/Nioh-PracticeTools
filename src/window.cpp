@@ -33,7 +33,7 @@ namespace NiohPracticeTools {
     }
 
     positions_list_view = new QListView(this);
-    positions_list_view->setGeometry(0, 0, 400, 416);
+    positions_list_view->setGeometry(0, 0, 400, 392);
     std::vector<std::string> position_names;
     for (auto& kv : positions) {
       position_names.push_back(kv.first);
@@ -47,50 +47,67 @@ namespace NiohPracticeTools {
     positions_list_view->setModel(&positions_list_model);
 
     attach = new QPushButton(this);
-    attach->setGeometry(0, 416, 100, 24);
+    attach->setGeometry(0, 392, 200, 24);
     attach->setText("Connect to Nioh");
 
     connect(attach, &QPushButton::clicked, [this] () {
-      std::thread([this] () {
-        attach->setText("Attaching...");
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-
+      try {
         auto params = find_process("nioh.exe");
         process.attach(std::get<0>(params), std::get<1>(params), std::get<2>(params));
+      } catch (std::exception e) {
+        QMessageBox qmb;
+        qmb.setText("Failed! Try again.");
+        qmb.exec();
+        return;
+      }
 
-        if (process.is_attached()) {
-          attach->setText("Connected");
-        } else {
-          attach->setText("Failed! Try again");
-          std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-          attach->setText("Connect to Nioh");
-        }
-      });
+      if (process.is_attached()) {
+        attach->setText("Connected");
+      } else {
+        QMessageBox qmb;
+        qmb.setText("Failed! Try again.");
+        qmb.exec();
+      }
     });
 
     load_pos = new QPushButton(this);
-    load_pos->setGeometry(100, 416, 100, 24);
+    load_pos->setGeometry(200, 392, 200, 24);
     load_pos->setText("Load Position");
 
     connect(load_pos, &QPushButton::clicked, [this] () {
-      QMessageBox qmb;
       auto i = positions_list_view->currentIndex();
       auto s = positions_list_model.data(i).toString().toStdString();
       auto kv = positions.find(s);
       auto& p = (*kv).second;
+      /*QMessageBox qmb;
       qmb.setText(tfm::format("%s %f %f %f", (const char*)s.data(), p.x, p.y, p.z).c_str());
-      qmb.exec();
+      qmb.exec();*/
+      if (!lock && process.is_attached()) {
+        try {
+          lock = true;
+          process.write_position(p);
+          lock = false;
+        } catch (memory_exception e) {
+          lock = false;
+        }
+      }
     });
 
     pos_x = new QTextEdit(this);
     pos_y = new QTextEdit(this);
     pos_z = new QTextEdit(this);
-    pos_x->setGeometry(200, 416, 66, 24);
-    pos_y->setGeometry(267, 416, 66, 24);
-    pos_z->setGeometry(334, 416, 66, 24);
+    pos_x->setGeometry(  0, 416, 133, 24);
+    pos_y->setGeometry(134, 416, 133, 24);
+    pos_z->setGeometry(268, 416, 133, 24);
     pos_x->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     pos_y->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     pos_z->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+
+    connect(this, &Window::show_position, this, [this] (float x, float y, float z) {
+      pos_x->setText(tfm::format("%f", x).c_str());
+      pos_y->setText(tfm::format("%f", y).c_str());
+      pos_z->setText(tfm::format("%f", z).c_str());
+    });
 
     position_updater = std::thread([this] () {
       while (true) {
@@ -98,9 +115,7 @@ namespace NiohPracticeTools {
           try {
             lock = true;
             auto t = process.read_position();
-            pos_x->setText(tfm::format("%f", t.x).c_str());
-            pos_y->setText(tfm::format("%f", t.y).c_str());
-            pos_z->setText(tfm::format("%f", t.z).c_str());
+            emit show_position(t.x, t.y, t.z);
             lock = false;
           } catch (memory_exception e) {
             lock = false;
@@ -110,6 +125,12 @@ namespace NiohPracticeTools {
       }
     });
   }
+
+  /*void Window::show_position(float x, float y, float z) {
+    pos_x->setText(tfm::format("%f", x).c_str());
+    pos_y->setText(tfm::format("%f", y).c_str());
+    pos_z->setText(tfm::format("%f", z).c_str());
+  }*/
 
   void Window::keyup (DWORD vk_code) {
     int r;
