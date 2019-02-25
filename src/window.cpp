@@ -25,7 +25,7 @@ namespace NiohPracticeTools {
     setFixedSize(400, 440);
 
     try {
-      positions = std::move(load_from_json("../positions.json"));
+      positions = std::move(load_from_json("positions.json"));
     } catch (std::exception e) {
       QMessageBox er;
       er.setText(e.what());
@@ -34,6 +34,7 @@ namespace NiohPracticeTools {
 
     positions_list_view = new QListView(this);
     positions_list_view->setGeometry(0, 0, 400, 392);
+    positions_list_view->setStyleSheet("background-image: url(:bg.jpg);");
     std::vector<std::string> position_names;
     for (auto& kv : positions) {
       position_names.push_back(kv.first);
